@@ -1,0 +1,10 @@
+---
+# vars file for baseline
+baseline_packages_apt:
+  - python3-pip
+  - byobu
+  - ufw
+  - apt-transport-https
+
+baseline_packages_python:
+  - openshift

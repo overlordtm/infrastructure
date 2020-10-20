@@ -1,0 +1,34 @@
+---
+- hosts: webservers
+  connection: local
+  tasks:
+    - name: Ensure SSH keys for access to VM
+      hcloud_ssh_key:
+        name: "{{ item.name }}"
+        public_key: "{{ item.key }}"
+        state: present
+      loop: "{{ allowed_ssh_keys | flatten(levels=1) }}"
+    - name: Ensure running VM for provisioning
+      hcloud_server:
+        name: "{{ inventory_hostname }}"
+        server_type: "{{ hcloud_server_instance }}"
+        image: "{{ hcloud_server_image }}"
+        state: present
+        ssh_keys: "{{ allowed_ssh_keys | map(attribute='name') | list }}"
+    - name: Refresh inventory to ensure new instances exist in inventory
+      meta: refresh_inventory
+    - name: Wait for VM to boot
+      wait_for_connection:
+        delay: 0
+        timeout: 120
+
+- hosts: webservers
+  roles:
+    - baseline
+    - xanmanning.k3s
+    - k8s-dashboard
+    - k3s-traefik
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+- import_playbook: provision-k8s.yml

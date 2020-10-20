@@ -1,0 +1,3 @@
+---
+# defaults file for baseline
+baseline_helm_install: yes

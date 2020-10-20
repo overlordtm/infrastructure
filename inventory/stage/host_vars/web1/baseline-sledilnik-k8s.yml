@@ -1,0 +1,7 @@
+---
+baseline_sledilnik_k8s_namespace: default
+
+baseline_sledilnik_k8s_imagepullsecrets:
+  - name: sledilnik-ghcr
+    username: overlordtm
+    password: "{{ vault_github_personal_access_token }}"

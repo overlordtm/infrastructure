@@ -1,0 +1,16 @@
+---
+- name: Add docker secrets for image repositories
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ baseline_sledilnik_k8s_namespace }}"
+      data:
+        # .dockerconfigjson: "ewoJImF1dGhzIjogewoJCSJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7CgkJCSJhdXRoIjogIlkyOTJhV1F4T1hOc1pXUnBiRzVwYXpwcVkxVlFiblpYY2xRMk5tbE1VSEZFVVdKT2JYTXlkblk9IgoJCX0KCX0KfQo="
+        .dockerconfigjson: "{{ lookup('template', 'templates/dockerconfig.json.j2', template_vars=item ) | tojson | b64encode }}"
+      type: kubernetes.io/dockerconfigjson
+  loop: "{{ baseline_sledilnik_k8s_imagepullsecrets }}"
+  no_log: true

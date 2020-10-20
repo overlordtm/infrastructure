@@ -1,0 +1,12 @@
+---
+# tasks file for k3s-traefik
+- name: Add traefik chart repo
+  community.kubernetes.helm_repository:
+    name: traefik
+    repo_url: "https://helm.traefik.io/traefik"
+
+- name: Deploy traefik helm chart
+  community.kubernetes.helm:
+    name: traefik
+    chart_ref: traefik/traefik
+    release_namespace: default

@@ -1,0 +1,5 @@
+---
+# defaults file for baseline-sledilnik-k8s
+baseline_sledilnik_k8s_namespace: default
+
+baseline_sledilnik_k8s_imagepullsecrets: []

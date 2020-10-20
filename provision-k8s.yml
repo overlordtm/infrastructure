@@ -1,0 +1,5 @@
+- hosts: webservers
+  roles:
+    - baseline-sledilnik-k8s
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"

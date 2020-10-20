@@ -1,0 +1,23 @@
+---
+# tasks file for baseline
+
+- name: Load platform vars
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+    - default.tml
+
+- name: Install required apt packages
+  apt:
+    name: "{{ baseline_packages_apt }}"
+    state: present
+    update_cache: yes
+
+- name: Install required python packages
+  pip:
+    name: "{{ baseline_packages_python }}"
+    state: present
+
+- include_tasks: helm.yml
+  when: baseline_helm_install

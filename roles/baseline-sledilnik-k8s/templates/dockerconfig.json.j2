@@ -1,0 +1,7 @@
+{
+    "auths": {
+        "ghcr.io": {
+            "auth": "{{ [item.username, item.password] | join(':') | b64encode }}"
+        }
+    }
+}

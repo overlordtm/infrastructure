@@ -1,81 +1,35 @@
-# Infrastructure
+# sledilnik infrastructure
 
-## Provision tarefik (loadbalancer)
-```
-ansible-playbook -i inventory traefik.yml
-```
-
-## Provison sledilnik webserver
-```
-ansible-playbook -i inventory sledilnik.yml
-```
-
-## Edit secrets
+## Obtain KUBECONFIG
 
 ```
-ansible-vault edit inventory/host_vars/web1/vault.yml
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@sledilnik.rtfm.si:/etc/rancher/k3s/k3s.yaml sledilnik-k8s.yml
+sed -i 's/127\.0\.0\.1/sledilnik\.rtfm\.si/' sledilnik-k8s.yml
+export KUBECONFIG=$(pwd)/sledilnik-k8s.yml
+kubectl get nodes
 ```
 
-## Deployment (quick)
+## Get kubernetes dashboard
 
-Open byobu (screen)
-
-Preview deploy (`pr-deploy.py`):
+Get auth token
 ```
-cd /opt/sledilnik
-while true; do ./pr-deploy.py; sleep 60; done
+kubectl -n kubernetes-dashboard describe secret admin-user-token | grep ^token
 ```
 
-Production deploy (`deploy.sh`):
+Run proxy
 ```
-cd /opt/sledilnik
-while true; do ./deploy.sh; sleep 60; done
-```
-
-
-## Deployment (in depth)
-
-### Production
-
-Production is deployed via docker-compose file (not much config). 
-It is using blue/green deploys for zero downtime. 
-
-So basic work done by deploy.sh is to check if there is new docker imaga available. If there is no new image available, just sleep for next minute. 
-If it is available, start new container using different project name
-
-This part check which deployment is currently running (green or blue)
-```
-if [ $(docker ps -f name=prod_blue -q) ]
-then
-    NEW="green"
-    OLD="blue"
-else
-    NEW="blue"
-    OLD="green"
-fi
+kubectl proxy
 ```
 
-Then start container that was not running with new image
-```
-echo "Starting "$NEW" container"
-docker-compose --project-name=${DEPLOY_ENV}_${NEW} up -d
-```
+Open
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
-Wait for some time
+## Get treafik dashboard
 
-Then stop old deploy
 ```
-echo "Stopping "$OLD" container"
-docker-compose --project-name=${DEPLOY_ENV}_$OLD stop
+kubectl port-forward $(kubectl get pods --selector "app.kubernetes.io/name=traefik" --output=name) 9000:9000
 ```
 
-### Preview
+Open
 
-Preview deploy is done by python script, that checks GH for open PR. If PR is open and has `deploy-preview` label, then script tries to pull corresponding docker image )(having tag `pr-###`). If image exists, then container is run with some flags and labels (remove=True, so it is removed when stopped, also routing labels for tarefik are set).
-
-At same time, for every running preview container, corresponsing PR on GH is checked if it is still open and having `deploy-preview` label. If not, container is stopped.
-
-
-
-* https://docs.traefik.io/
-* https://docs.docker.com/compose/compose-file/
+http://localhost:9000/dashboard/
