@@ -24,7 +24,7 @@ kubectl proxy
 Open
 http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
-## Get treafik dashboard
+## Get traefik dashboard
 
 ```
 kubectl port-forward $(kubectl get pods --selector "app.kubernetes.io/name=traefik" --output=name) 9000:9000
