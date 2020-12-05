@@ -1,0 +1,6 @@
+---
+- name: Install required apt packages
+  apt:
+    name: "{{ baseline_packages_apt }}"
+    state: present
+    update_cache: yes

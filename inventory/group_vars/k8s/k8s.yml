@@ -1,0 +1,6 @@
+k8s_namespaces:
+  - sledilnik-prod
+  - sledilnik-stage
+  - sledilnik-pr
+  - spark-prod
+  - spark-stage

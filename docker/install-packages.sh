@@ -17,7 +17,7 @@ apt-get update
 apt-get -y upgrade
 
 # Install a new package, without unnecessary recommended packages:
-apt-get -y install --no-install-recommends apt-utils openssh-client curl python3 python3-pip python3-setuptools git
+apt-get -y install --no-install-recommends apt-utils openssh-client curl python3 python3-pip python3-setuptools git build-essential
 
 # Delete cached files we don't need anymore:
 apt-get clean

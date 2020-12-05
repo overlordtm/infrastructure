@@ -1,5 +1,5 @@
 ---
-- hosts: webservers
+- hosts: k8s
   connection: local
   tasks:
     - name: Destroy VM

@@ -1,6 +1,8 @@
 ---
-- hosts: webservers
+- hosts: k8s
   connection: local
+  gather_facts: no
+  tags: ensure-vm
   tasks:
     - name: Ensure SSH keys for access to VM
       hcloud_ssh_key:
@@ -13,22 +15,27 @@
         name: "{{ inventory_hostname }}"
         server_type: "{{ hcloud_server_instance }}"
         image: "{{ hcloud_server_image }}"
+        location: nbg1
         state: present
         ssh_keys: "{{ allowed_ssh_keys | map(attribute='name') | list }}"
     - name: Refresh inventory to ensure new instances exist in inventory
       meta: refresh_inventory
+
+- hosts: k8s
+  tags: provision
+  gather_facts: no
+  pre_tasks:
     - name: Wait for VM to boot
       wait_for_connection:
-        delay: 0
+        delay: 5
         timeout: 120
 
-- hosts: webservers
+- hosts: k8s
+  tags: provision
   roles:
-    - baseline
-    - xanmanning.k3s
-    - k8s-dashboard
-    - k3s-traefik
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-
-- import_playbook: provision-k8s.yml
+    - role: baseline
+      tags: baseline
+    - role: xanmanning.k3s
+      tags: k3s
+    - role: weareinteractive.ufw
+      tags: firewall

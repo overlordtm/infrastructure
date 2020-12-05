@@ -1,0 +1,21 @@
+---
+ufw_enabled: true
+ufw_rules:
+  # Set loggin
+  - logging: "full"
+  - rule: allow
+    comment: "SSH"
+    to_port: 22
+    proto: tcp
+  - rule: allow
+    comment: "HTTP"
+    to_port: 80
+    proto: tcp
+  - rule: allow
+    comment: "HTTPS"
+    to_port: 443
+    proto: tcp
+  - rule: allow
+    comment: "kubeapi"
+    to_port: 6443
+    proto: tcp

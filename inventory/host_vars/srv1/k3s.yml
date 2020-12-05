@@ -1,0 +1,8 @@
+---
+k3s_release_version: v1.19
+
+# k3s comes with traefik 1.7, we need 2+
+k3s_no_traefik: true
+
+# containerd and ghcr.io combo does not work
+# k3s_use_docker: true

@@ -1,1 +1,3 @@
 .vault_pass
+.secrets
+vault_open.yml

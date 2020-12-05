@@ -1,0 +1,5 @@
+---
+- name: Install required python packages
+  pip:
+    name: "{{ baseline_packages_python }}"
+    state: present

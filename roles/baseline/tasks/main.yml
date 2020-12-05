@@ -6,18 +6,38 @@
   with_first_found:
     - "{{ ansible_distribution }}.yml"
     - "{{ ansible_os_family }}.yml"
-    - default.tml
+    - default.yml
 
-- name: Install required apt packages
-  apt:
-    name: "{{ baseline_packages_apt }}"
-    state: present
-    update_cache: yes
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}.sledilnik.org"
 
-- name: Install required python packages
-  pip:
-    name: "{{ baseline_packages_python }}"
+# lDWlSd0aZ06dEWM7TKiqUPxRD52snRA2GVva3Qas
+- name: Delete (possible old) A record for server
+  community.general.cloudflare_dns:
+    zone: sledilnik.org
+    record: "{{ inventory_hostname }}"
+    type: A
+    api_token: "{{ cf_api_token }}"
+    state: absent
+  tags:
+    - cf
+
+# lDWlSd0aZ06dEWM7TKiqUPxRD52snRA2GVva3Qas
+- name: Create A record for server
+  community.general.cloudflare_dns:
+    zone: sledilnik.org
+    record: "{{ inventory_hostname }}"
+    type: A
+    value: "{{ ansible_default_ipv4.address }}"
+    api_token: "{{ cf_api_token }}"
     state: present
+  tags:
+    - cf
+
+- include_tasks: apt.yml
+
+- include_tasks: pip.yml
 
 - include_tasks: helm.yml
   when: baseline_helm_install

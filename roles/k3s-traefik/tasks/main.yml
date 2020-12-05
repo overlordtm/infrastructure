@@ -10,3 +10,12 @@
     name: traefik
     chart_ref: traefik/traefik
     release_namespace: default
+    values:
+      additionalArguments:
+        - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+        - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+        - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+        - "--certificatesresolvers.letsencrypt.acme.email=andraz@vrhovec.si"
+        - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+        - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+        - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"

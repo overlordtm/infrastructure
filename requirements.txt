@@ -1,3 +1,4 @@
 ansible==2.10.1
 jmespath==0.9.4
-hcloud-python==1.9.1
+hcloud==1.9.1
+PyGithub==1.53

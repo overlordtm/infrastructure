@@ -1,5 +1,209 @@
-- hosts: webservers
-  roles:
-    - baseline-sledilnik-k8s
+---
+- hosts: k8s
+  tags: provision
+  vars:
+    k8s_dashboard_version: v2.0.4
+    k8s_dahsboard_install_url: https://raw.githubusercontent.com/kubernetes/dashboard/{{ k8s_dashboard_version }}/aio/deploy/recommended.yaml
+    deployment_user: sledilnik-deploy
   environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+
+    - name: Create a k8s namespace
+      community.kubernetes.k8s:
+        name: "{{ item }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      loop: "{{ k8s_namespaces }}"
+
+    - name: Install kubernetes dashboard
+      community.kubernetes.k8s:
+        state: present
+        definition: "{{ lookup('url', k8s_dahsboard_install_url, split_lines=False) | from_yaml_all }}"
+
+    - name: Create admin-user for dashboard
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: admin-user
+            namespace: kubernetes-dashboard
+
+    - name: Create admin-user roles
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: admin-user
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - kind: ServiceAccount
+            name: admin-user
+            namespace: kubernetes-dashboard
+
+    - name: Add traefik chart repo
+      community.kubernetes.helm_repository:
+        name: traefik
+        repo_url: https://helm.traefik.io/traefik
+
+    - name: Create Secret for CloudFlare API
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: traefik-cloudflare
+            namespace: default
+          type: Opaque
+          stringData:
+            token: "{{ cf_api_token }}"
+
+    - name: Create ConfigMap for Traefik
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: traefik-config
+            namespace: default
+          data:
+            traefik-config.yaml: |
+              http:
+                middlewares:
+                  headers-default:
+                    headers:
+                      sslRedirect: true
+                      browserXssFilter: true
+                      contentTypeNosniff: true
+                      forceSTSHeader: true
+                      stsIncludeSubdomains: true
+                      stsPreload: true
+                      stsSeconds: 15552000
+                      customFrameOptionsValue: SAMEORIGIN
+
+    - name: Deploy traefik helm chart
+      community.kubernetes.helm:
+        name: traefik
+        chart_ref: traefik/traefik
+        chart_version: 9.11.0
+        release_namespace: default
+        update_repo_cache: yes
+        values: # TODO: template this
+          persistence:
+            enabled: true
+            storageClass: local-path
+          volumes:
+            - name: 'traefik-config'
+              mountPath: "/config"
+              type: configMap
+          additionalArguments:
+            - "--providers.file.directory=/config"
+            - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+            - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+            - "--certificatesresolvers.letsencrypttest.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+            - "--certificatesresolvers.letsencrypttest.acme.email=info@sledilnik.org"
+            - "--certificatesresolvers.letsencrypttest.acme.storage=/data/acmetest.json"
+            - "--certificatesresolvers.letsencrypttest.acme.dnschallenge.provider=cloudflare"
+            - "--certificatesresolvers.letsencrypt.acme.email=info@sledilnik.org"
+            - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+            - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare"
+          env:
+            - name: CLOUDFLARE_DNS_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: traefik-cloudflare
+          providers:
+            kubernetesCRD:
+              enabled: true
+              namespaces:
+                - default
+                - sledilnik-prod
+                - sledilnik-stage
+                - sledilnik-pr
+                - spark-prod
+                - spark-stage
+
+    - name: Create service account for sledilnik deployment
+      community.kubernetes.k8s:
+        state: present
+        namespace: default
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: "{{ deployment_user }}"
+          automountServiceAccountToken: false
+
+    - name: Create ClusterRole for deployment
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: "{{ deployment_user }}-role"
+          rules:
+            - apiGroups: [""]
+              resources: ["secrets"]
+              verbs: ["list"]
+            - apiGroups: ["traefik.containo.us"]
+              resources: ["ingressroutes"]
+              verbs: ["*"]
+
+
+    - name: Create RoleBinding for edit
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: "{{ deployment_user }}-edit-rolebinding"
+            namespace: "{{ item }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: edit
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ deployment_user }}"
+              namespace: default
+      loop:
+        - sledilnik-prod
+        - sledilnik-stage
+        - sledilnik-pr
+
+
+    - name: Create RoleBinding for custom role
+      community.kubernetes.k8s:
+        state: present
+        # namespace: default
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: "{{ deployment_user }}-custom-rolebinding"
+            namespace: "{{ item }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: "{{ deployment_user }}-role"
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ deployment_user }}"
+              namespace: default
+      loop:
+        - sledilnik-prod
+        - sledilnik-stage
+        - sledilnik-pr
